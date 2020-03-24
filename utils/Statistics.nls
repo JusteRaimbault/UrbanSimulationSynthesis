@@ -1,0 +1,187 @@
+;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Basic Stat functions
+;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+to-report utils:statistics:summary [x]
+  report (word "length = " length x "\n mean = " mean x "\n median = " median x "\n min = " min x "\n max = " max x)
+end
+
+
+; histogram retrieving count list
+; nbreaks = number of segments
+; reports counts
+to-report utils:statistics:hist [x nbreaks]
+  ifelse x != [] [
+  let counts utils:list:rep 0 nbreaks
+  let m min x let ma max x
+  foreach x [
+      ? ->
+    let locindex floor ((? - m)/(ma - m)*(nbreaks - 1))
+    set counts replace-item locindex counts (item locindex counts + 1)
+  ]
+
+  report counts
+  ][
+    report []
+  ]
+end
+
+
+
+; quantile function
+to-report utils:statistics:quantile [x q]
+  if length x = 0 [report 0]
+  report item (floor (q * length x)) (sort x)
+end
+
+
+
+to-report pos [xx psi]
+  ifelse xx > psi [report xx - psi][report 0]
+end
+  
+to-report ind [xx psi]
+  ifelse xx > psi [report -1][report 0]
+end
+
+;;
+; single breakpoint regression using algorithm of 
+;  Muggeo, V. M. (2003). Estimating regression models with unknown break‐points. Statistics in medicine, 22(19), 3055-3071.
+to-report utils:statistics:breakpoint-regression [x y]
+  let maxiters 200
+  let tolerance 1e-5
+  let psi (max x - min x) / 2
+  let iter 0 let epsilon 1 let epsilons utils:list:rep 1 10
+  
+  let res [0 0 0 0]
+  
+  carefully [
+  
+  while [iter < maxiters and (max map abs epsilons) > tolerance ][
+    let u map [xx -> pos xx psi] x
+    let v map [xx -> ind xx psi] x
+    let sol matrix:regress matrix:from-column-list (list y x u v)
+    ;show first last sol
+    let beta item 2 (first sol) let gamma item 3 (first sol)
+    set epsilon gamma / beta
+    set psi psi + epsilon
+    set iter iter + 1
+    set epsilons lput epsilon (but-first epsilons)
+    ;show (word "epsilon = " epsilon) show (word "beta = " beta) show (word "gamma = " gamma) show (word "psi = " psi)
+    ;show epsilons
+  ]
+  ; do separated regressions whith the estimated breakpoint
+  ;let rsquared [] let regs []
+  ;foreach (utils:list:seq min x max x 0.01) [psi ->
+  
+  let x1 [] let y1 [] let x2 [] let y2 []
+  (foreach x y [ [xx yy] ->
+    ifelse xx < psi [
+      set x1 lput xx x1 set y1 lput yy y1
+    ][
+      set x2 lput xx x2 set y2 lput yy y2   
+    ]
+  ])
+    ;show length x1 show length x2
+    ;if length x1 > 10 and length x2 > 10 [
+  let reg1 matrix:regress matrix:from-column-list (list y1 x1)
+  let reg2 matrix:regress matrix:from-column-list (list y2 x2)
+  
+  ;show reg1 show reg2
+    ;set rsquared lput ((first last reg1 + first last reg2) / 2) rsquared
+    ;set rsquared lput (min ( list first last reg1 first last reg2)) rsquared
+    ;  set regs lput (list reg1 reg2 psi) regs
+    
+  ;]
+  ;]
+  let alpha1 (last first reg1)
+  let alpha2 (last first reg2)
+  let rsq1 (first last reg1)
+  let rsq2 (first last reg2)
+  ; weighted rsquared by num of obs
+  let rsq ((rsq1 * (length y1) / (length y)) + (rsq2 * (length y2) / (length y)))
+  
+ set res (list alpha1 alpha2 psi rsq)
+  
+  ;let imin list:max-index rsquared
+  ;let regmin item imin regs
+  ;report (list (last first (item 0 regmin)) (last first (item 1 regmin)) (last regmin))
+  ][]
+    report res 
+end
+
+;;
+; ! algo is for continuous function
+to test-breakpoint-regression
+  let x utils:list:seq 0 1 (1 / 100)
+  let breakpoint 0.2 + random-float 0.6
+  ;let alpha1 0.5 + (random-float 0.5) let s1 (random-float 1) - 0.5 set alpha1 alpha1 * (s1 / abs s1) let alpha2 0.5 + (random-float 0.5) let s2 (random-float 1) - 0.5 set alpha2 alpha2 * -1 * (s1 / abs s1)
+  let alpha1 (random-float 1) - 2 let alpha2 (random-float 1) - 1
+  let y [] foreach x [xx -> ifelse xx < breakpoint [set y lput ((alpha1 * xx) + random-normal 0 0.0001) y][set y lput ((alpha2 * (xx - breakpoint)) + (alpha1 * breakpoint) + random-normal 0 0.0001) y]]
+  show x show y
+  set-current-plot "reg" clear-plot set-plot-pen-mode 2 (foreach x y [[xx yy] -> plotxy xx yy])
+  let breakpointreg utils:statistics:breakpoint-regression x y 
+  show (word "Real values : alpha1 = " alpha1 " ; alpha2 = " alpha2 " ; psi = " breakpoint)
+  show (word "Estimated : alpha1 = " (item 0 breakpointreg) " ; alpha2 = " (item 1 breakpointreg) " ; psi = " item 2 breakpointreg)
+end
+
+
+
+;;
+; generic rank-size exponent and r-squared
+to-report utils:statistics:rank-size-hierarchy [x]
+  if max x = 0 and min x = 0 [report [0 0]]
+  let xx remove 0 x
+  let sol matrix:regress matrix:from-column-list (list (map [? -> log ? 10] sort-by [[?1 ?2] -> ?1 > ?2] xx) (map [? -> log ? 10] utils:list:seq 1 length xx 1))
+  report (list (last first sol) (first last sol))
+end
+
+
+
+;;
+; entropy for x >= 0
+to-report utils:statistics:entropy [x]
+  let xx remove 0 x
+  let xtot sum xx
+  if xtot = 0 [report 0]
+  report (- 1 / (ln length x) * sum (map [? -> ? / xtot * ln (? / xtot)] xx))
+end
+
+
+
+;;
+; pearson correlation
+to-report utils:statistics:pearson-correlation [x y]
+  let mx mean x let xx map [? -> ? - mx] x let my mean y let yy map [? -> ? - my] y
+  let sx standard-deviation x let sy standard-deviation y
+  if sx = 0 or sy = 0 [report 0]
+  report mean (utils:list:times-element-wise xx yy) / (sx * sy)
+end
+
+
+;;
+; note : not sure the netlogo standard-dev primitive use the biased or unbiased estimator of variance - should not change much
+; defaults at 95% confidence level
+to-report utils:statistics:pearson-correlation-ci [x y]
+  let n length x
+  let rho utils:statistics:pearson-correlation x y
+  let rhomin tanh ((atanh rho) - 1.96 / ((sqrt n)*(sqrt (n - 3))))
+  let rhomax tanh ((atanh rho) + 1.96 / ((sqrt n)*(sqrt (n - 3))))
+  report (list rho rhomin rhomax)
+end
+
+to-report tanh [z]
+  report  (exp (2 * z) - 1)/(exp (2 * z) + 1)
+end
+
+to-report atanh [r]
+  report 0.5 * ln ((1 + r)/(1 - r))
+end
+
+;;
+; covariance
+;  cov(X,Y) = E(xy)-E(x)E(y)
+to-report utils:statistics:covariance [x y]
+  report (mean utils:list:times-element-wise x y) - (mean x * mean y)
+end

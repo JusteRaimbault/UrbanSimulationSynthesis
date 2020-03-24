@@ -1,0 +1,88 @@
+
+;;
+; display
+
+
+to display:update-display
+  if global:headless? != true [
+    ; cities
+    display:display-cities
+  
+    ; network
+    display:display-network
+  
+    ; specific plots
+    display:display-plots
+  
+  ]
+end
+
+
+to display:color-patches
+  ask patches [set pcolor 9]
+end
+
+
+to display:display-cities
+  let ptot sum [city:population] of cities
+  
+  ask cities [set city:color-var ln city:population]
+  
+  let mi min [city:color-var] of cities let ma max [city:color-var] of cities
+  if mi < ma [
+  ask cities [
+    set size (ln city:population) ;/ 10
+    ;set color gradient:scale (list extract-rgb blue extract-rgb red) color-var mi ma
+    ;set color scale-color red color-var (mi - 2) ma
+    set color scale-color red city:color-var mi ma
+  ]
+  ]
+end
+
+
+to display:display-network
+  
+    if global:link-display-var = "speed" [
+      ;ask links [set thickness relative-speed / ((1 + network-reinforcment-gmax) ^ final-time-step)]
+      ;ask links [set hidden? false] ask paths with [path-length < effective-length] [set hidden? true]
+      ; ! relative-speed is a pace
+      let mi min [ln (1 / path:pace)] of links let ma max [ln (1 / path:pace)] of links
+      ;ask links [set thickness 4 * ((ln relative-speed) - mi) / (ma - mi) ]
+      ifelse mi < ma [
+         ; hardcoded link width is hardcore
+        let maxthickness 5.0 
+        ask links [set thickness maxthickness * ((ln (1 / path:pace)) - mi) / (ma - mi) ]
+      ][
+        ask links [set thickness 0]
+      ]
+    ]
+    if global:link-display-var = "flow" [
+      ask links [set thickness 25 * ln (1 + path:flow)]
+      if ticks > 0 [ask links [set hidden? false] ask links with [path:flow = 0] [set hidden? true]]
+    ]
+end
+
+
+to display:display-plots
+  
+  ; rank-size plot
+  set-current-plot "rank-size" set-current-plot-pen "default"
+  ;let col gradient:scale (list extract-rgb blue extract-rgb red) ticks 0 (length dates)
+  let col scale-color red ticks 0 (length global:dates)
+  set-plot-pen-color col;(approximate-rgb item 0 col item 1 col item 2 col)
+  let pops map [? -> log ? 10] (sort-by [[?1 ?2] -> ?1 > ?2] (matrix:get-column global:populations ticks))
+  let ranks map [? -> log ? 10] (utils:list:seq 1 count cities 1)
+  let i 0 plot-pen-up plotxy first ranks first pops
+    plot-pen-down
+    foreach pops [? ->
+       plotxy item i ranks ? set i i + 1
+    ]
+  
+end
+
+
+
+
+
+
+

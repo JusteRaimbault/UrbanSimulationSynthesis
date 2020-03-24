@@ -1,0 +1,67 @@
+
+;;
+; main
+
+
+;;
+; go for the full period
+to go-full-period
+  
+  if global:headless? = 0 [
+    if ticks > 0 [setup:reset]
+  ]
+  
+  repeat (length matrix:get-row global:real-populations 0) - 1 [
+    go
+  ]
+  
+end
+
+
+;;
+; go one time step
+to go
+  
+  ; tick done at the beginning, as we start at t=1
+  tick
+  
+  ; evolve populations
+  cities:evolve-populations
+  
+  ; evolve network
+  network:evolve-network
+  
+  indicators:update-indicators
+  
+  ; display
+  display:update-display
+  
+  ;log
+  show (word "average log population " mean [ln city:population] of cities)
+  show (word "average travel time " mean (utils:list:concatenate matrix:to-row-list global:distance-matrix))
+  
+end
+
+
+
+to test:shortest-path-random-cities-nodes
+  ask paths [set color grey]
+  nw:set-context turtles paths
+  ask one-of cities [
+    show city:name
+    let c2 one-of other cities
+    ask c2 [show city:name]
+    let n2 [one-of nodes with-min [distance myself]] of c2
+    ask one-of nodes with-min [distance myself] [let p nw:weighted-path-to n2 "path:travel-time" if p != false [foreach p [? -> ask ? [set hidden? false set color red]]]]]
+end
+
+to test:shortest-path-random-cities
+  ask paths [set color grey]
+  nw:set-context turtles paths
+  ask one-of cities [
+    show city:name
+    let c2 one-of other cities
+    ask c2 [show city:name]
+    let p nw:weighted-path-to c2 "path:travel-time" if p != false [foreach p [? -> ask ? [set hidden? false set color red]]]
+  ]
+end

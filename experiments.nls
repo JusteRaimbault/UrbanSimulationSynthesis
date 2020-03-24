@@ -1,0 +1,141 @@
+
+;;
+;  experiments
+
+
+
+
+
+
+;;
+; indicators :
+; - summary of trajectories
+;  population-hierarchies
+;  population-entropies
+;  population-summaries
+;  closeness-hierarchies
+;  closeness-entropies
+;  closeness-summaries
+;  accessibility-hierarchies
+;  accessibility-entropies
+;  accessibility-summaries
+;
+; - lagged correlations
+;   lagged-corrs var1 var2 6 0
+;    with vars \in {city-population ; city-closeness-centrality ; city-accessibility}
+;
+; - distance correlations
+;   distance-correlation var1 var2
+;    with vars \in {city-population ; city-closeness-centrality ; city-accessibility}
+;
+; - trajectory complexity and diversity (for all vars) comlexitypop : not useful
+;   rank-correlation
+;   trajectories-diversity
+;   trajectories-complexity
+
+to setup-experiment-synthetic [synth-ranksize nw-type nw-rein-quantile nw-gmax nw-exponent grav-weight grav-gamma grav-decay feed-weight feed-gamma feed-decay final-time seed]
+
+  show (word "exp : " synth-ranksize " - " nw-rein-quantile " - " nw-gmax " - " final-time " - " grav-weight " - " grav-gamma " - " grav-decay " - " feed-weight " - " feed-gamma " - " feed-decay " - " nw-type " - " seed)
+  
+  ca
+  
+  set global:headless? true
+  
+  random-seed seed
+  
+  ; setup parameters
+  set global:synthetic-rank-size-exp synth-ranksize ;1.2
+  set global:network-reinforcment-gmax nw-gmax ;0.05
+  set global:network-reinforcment-exponent nw-exponent ; 1.0
+  set global:network-reinforcment-quantile nw-rein-quantile ; 0.1
+  set global:final-time-step final-time ; 30
+  set global:gravity-weight grav-weight ; ~ 0.001
+  set global:gravity-gamma grav-gamma ; ~ 1
+  set global:gravity-decay grav-decay ;  < 200 (world diag : 284)
+  
+  ;set global:setup-type "synthetic"
+
+  set global:growth-rate 0.0
+  
+  setup:setup-headless
+  
+  setup:setup
+  
+end
+
+
+
+
+to run-experiment
+  ;; depending on indicators, getting them after will fail anyway - better remove the secure run? - ok for pse - indicators should be all wrapped?
+  carefully[
+    go-full-period
+  ][
+    show error-message
+    set global:failed? true
+  ]
+end
+
+
+to test-experiment-synthetic
+  ca
+  
+  ;setup-experiment-synthetic synth-ranksize nw-type nw-rein-quantile nw-gmax nw-exponent grav-weight grav-gamma grav-decay feed-weight feed-gamma feed-decay final-time seed
+  ;setup-experiment-synthetic 1.0 1 3.0 0.01 30 0.0001 1.0 200.0 0.0 1.0 1.0 0 random 10000
+  setup-experiment-synthetic 1.0 "virtual" 0.9 0.01 1.0 0.0001 1.0 200.0 0.0 1.0 1.0 30 (random 10000)
+  run-experiment
+  indicators:compute-indicators
+  
+end
+
+
+to test-experiment-synthetic-physical
+  ca
+  
+  ;setup-experiment-synthetic synth-ranksize nw-type nw-threshold nw-gmax nw-exponent physical-nw-rein-quantile nw-slimemould-fun grav-weight grav-gamma grav-decay feed-weight feed-gamma feed-decay final-time seed
+  setup-experiment-synthetic 1.0 "physical" 0.5 0.01 1.0 0.0001 1.0 200.0 0.0 1.0 1.0 30 (random 10000)
+  run-experiment
+  indicators:compute-indicators
+  
+end
+
+
+to test-experiment-pse
+  ca
+  ; feedbackDecay=1.0, feedbackGamma=1.0, feedbackWeight=0.0, finalTime=30, gravityDecay=235.32452323467268, gravityGamma=5.0,
+  ;gravityWeight=0.01, id=0, nwExponent=0.0, nwGmax=0.019517621425440414, nwPhysQuantile=0.0, nwSlimeMouldFun=thresholded, nwThreshold=0.0,
+  ;nwType=virtual, openmole$seed=242991035577441843, replication=1756061224, synthRankSize=1.7071702917293508
+  setup-experiment-synthetic 1.7 "virtual" 0.99 0.0195 1.0 0.01 5.0 235 0.0 1.0 1.0 30 (random 100000);1756061224
+  run-experiment
+  show pse-delta-pop-hierarchy
+  show pse-delta-closeness-hierarchy
+  show pse-rankcorr
+end
+
+
+
+
+
+;;;;;;;;;;;
+;; LOCAL Experiment (with head)
+
+;;
+;  do a profile along one parameter, all other being fixed
+to profile [parameter p-min p-max p-step]
+  let pvalues utils:list:seq p-min p-max p-step
+  let res-logmse [] let res-mselog []
+  foreach pvalues [? ->
+    show (word "profile : " parameter " = " ?)
+    run (word "set " parameter " " ?)
+    setup:reset
+    go-full-period
+    set res-logmse lput log-mse-population res-logmse set res-mselog lput mse-log-population res-mselog
+  ]
+
+  ; plot the results
+  set-current-plot "profile-logmse" set-plot-x-range min pvalues max pvalues set-plot-y-range min res-logmse max res-logmse
+  let i 0 foreach res-logmse [? -> plotxy item i pvalues ? set i i + 1]
+  set-current-plot "profile-mselog" set-plot-x-range min pvalues max pvalues set-plot-y-range min res-mselog max res-mselog
+  set i 0 foreach res-mselog [? -> plotxy item i pvalues ? set i i + 1]
+end
+
