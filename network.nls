@@ -22,11 +22,7 @@ to network:evolve-network
   
 end
 
-;;
-; condition to update the network
-to-report network:network-update?
-  report true
-end
+
 
 
 ;;
@@ -46,6 +42,9 @@ to network:grow-physical-network
     ;    set path:pace path:travel-time / path:length
     ;  ]
     ;]
+  
+  ;;
+  ; evolve link speeds following investments by governments
     
  
   
@@ -66,8 +65,18 @@ end
 
 
 
+;;
+; flow mat -> virtual links
+to network:update-pair-flows
+  ask pair-paths [set pair-path:flow matrix:get global:gravity-flows ([city:index] of end1) ([city:index] of end2)]
+end
 
 
+;;
+; show/hide direct flow links
+to network:toggle-pair-flows
+  set global:pair-paths-hidden? not global:pair-paths-hidden?
+end
 
 
 ;; 
@@ -79,7 +88,6 @@ to network:cache-nw-measures
   ask paths [
     set path:bw-centrality 0
     set path:flow 0
-    set path:feedback-flow 0
   ]
   ask cities [set city:bw-centrality 0 set city:flow 0]
   set global:shortest-paths table:make set global:nw-speeds table:make set global:nw-travel-times table:make set global:nw-detours table:make set global:pairs-total-weight 0
@@ -93,16 +101,21 @@ to network:cache-nw-measures
       let c2 item j clist
       ; get current real flow
       let current-flow matrix:get global:gravity-flows [city:index] of c1 [city:index] of c2
-      let current-feedback-flow matrix:get global:feedback-flows [city:index] of c1 [city:index] of c2
+      
+      ;let current-feedback-flow matrix:get global:feedback-flows [city:index] of c1 [city:index] of c2
+      
       ; compute shortest path
       let currentpath [] let tpath [] ask c1 [set currentpath nw:weighted-path-to c2 "path:travel-time" set tpath nw:turtles-on-weighted-path-to c2 "path:travel-time"]
       ; update link betweeness
-      let l 0 let t 0 foreach currentpath [? -> ask ? [
-        set t t + path:travel-time
-        set l l + path:length
-        set path:bw-centrality path:bw-centrality + 1
-        set path:flow path:flow + (current-flow * 2 / (n * (n - 1)))
-        set path:feedback-flow path:feedback-flow + (current-feedback-flow * 2 / (n * (n - 1)))]]
+      let l 0 let t 0 foreach currentpath [
+        ? -> ask ? [
+          set t t + path:travel-time
+          set l l + path:length
+          set path:bw-centrality path:bw-centrality + 1
+          set path:flow path:flow + (current-flow * 2 / (n * (n - 1)))
+          ;set path:feedback-flow path:feedback-flow + (current-feedback-flow * 2 / (n * (n - 1))) ; disactivated
+        ]
+      ]
       ; update node betweeness
       ;foreach tpath [ask ? [set city-bw-centrality city-bw-centrality + 1 set city-flow city-flow + (current-flow * 2 / (n * (n - 1)))]]
       ; update shortest path table

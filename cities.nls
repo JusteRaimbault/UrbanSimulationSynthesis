@@ -28,12 +28,17 @@ to cities:evolve-populations
   if mean-pot-gravity = 0 [set mean-pot-gravity 1]
   set pots-gravity matrix:times-scalar pots-gravity (1 / mean-pot-gravity)
 
+  ; add country effect - multiploer latrix is constant
+  set pots-gravity matrix:times-element-wise pots-gravity global:country-decay-matrix
+  
   ; update gravity flows
   set global:gravity-flows matrix:copy pots-gravity
 
   ;  - cache nw measures
   network:cache-nw-measures
 
+  ; update city pair flows (for viz)
+  network:update-pair-flows
 
   ;; current populations
   let gravity-growth (matrix:times-scalar (matrix:times pots-gravity (matrix:make-constant n 1 1)) (global:gravity-weight / n))
@@ -133,6 +138,7 @@ to city:new-city
     set turtle:name city:name
   ]
   set city:population-history (list city:population) set city:expected-population-history (list city:population)
+  ifelse xcor < min-pxcor + (max-pxcor - min-pxcor) / 2 [set city:country 0][set city:country 1]
 end
 
 ;;

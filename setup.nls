@@ -47,6 +47,7 @@ to setup:reset
   setup:reset-populations
   setup:reset-links
   setup:reset-distances
+  setup:setup-matrices
   setup:setup-indicators
   reset-ticks
   clear-all-plots
@@ -60,6 +61,7 @@ end
 
 to setup:reset-links
   ask paths [path:new-path]
+  ask pair-paths [set pair-path:flow 0]
 end
 
 ;;
@@ -79,12 +81,15 @@ to setup:setup-globals
   set global:synthetic-max-pop 100000
   
   set global:growth-rate 0
+  set global:gravity-weight 0.01
   
   set global:alpha0 3 set global:n0 3
   
   set global:slime-mould-node-distance 15;20
   
   set global:slime-mould-link-deletion-proportion 0.2
+  
+  set global:pair-paths-hidden? true
   
 end
 
@@ -103,14 +108,21 @@ end
 
 to setup:setup-cities
   
-    let i 1
+    let i 1 let index 1
+    let xmin min-pxcor + 10 let xmax min-pxcor + ((max-pxcor - min-pxcor) / 2) - 10
     create-cities global:synthetic-cities-number [
       ;setxy random-xcor random-ycor
-      move-to one-of patches with [count cities in-radius 10 = 0]
-      set city:index (i - 1)
-      set city:population global:synthetic-max-pop / (i ^ global:synthetic-rank-size-exp) set i i + 1
+      move-to one-of patches with [count cities in-radius 10 = 0 and pxcor >= xmin and pxcor <= xmax and pycor >= min-pycor + 10 and pycor <= max-pycor - 10]
+      set city:index (index - 1)
+      set city:population global:synthetic-max-pop / (i ^ global:synthetic-rank-size-exp)
+      set i i + 1 set index index + 1
+      if index = (floor global:synthetic-cities-number / 2) + 1 [set i 1 set xmin min-pxcor + ((max-pxcor - min-pxcor) / 2) + 10 set xmax max-pxcor - 10]
       city:new-city
      ]
+  
+  ;;
+  ; draw the boundary
+  crt 1 [setxy min-pxcor + (max-pxcor - min-pxcor) / 2 min-pycor set color green set pen-size 4 pen-down set heading 0 while [ycor < max-pycor][fd 1] die]
   
 end
 
@@ -138,6 +150,10 @@ to setup:initial-network
   ask paths [path:new-path]
   ask paths with [path:length = 0] [die]   
   
+  ;;
+  ; pair paths
+  let i 0 repeat (count cities) - 1 [let j i + 1 repeat (count cities - i - 1) [ask city i [create-pair-path-with city j [set hidden? true set color blue]] set j j + 1] set i i + 1]
+  
 end
 
 
@@ -154,9 +170,14 @@ to setup:setup-matrices
       ;let xi matrix:from-row-list (utils:list:rep xcors n) let xj matrix:from-column-list (utils:list:rep xcors n) let yi matrix:from-row-list (utils:list:rep ycors n) let yj matrix:from-column-list (utils:list:rep ycors n)
       ;set global:distance-matrix matrix:map sqrt ((matrix:times-element-wise (xi matrix:- xj) (xi matrix:- xj)) matrix:+ (matrix:times-element-wise (yi matrix:- yj) (yi matrix:- yj)))
    
-    set global:distance-matrix matrix:make-constant n n 0  set global:gravity-flows matrix:make-constant n n 0 set global:feedback-flows matrix:make-constant n n 0
+    set global:distance-matrix matrix:make-constant n n 0 
+    set global:gravity-flows matrix:make-constant n n 0
+    ;set global:feedback-flows matrix:make-constant n n 0
     network:update-distance-matrices 
     
+    set global:country-decay-matrix matrix:make-constant n n 0
+    ask cities [let i city:index let ci city:country ask cities [let j city:index let cj city:country ifelse ci = cj [matrix:set global:country-decay-matrix i j 1][matrix:set global:country-decay-matrix i j global:international-decay]]]
+  
     ; feedback distance matrix
     let xcors [] let ycors [] let pops [] foreach sort-by [[?1 ?2] -> [city:index] of ?1 < [city:index] of ?2] cities [? -> ask ? [set xcors lput xcor xcors set ycors lput ycor ycors set pops lput city:population pops]]
     let xi matrix:from-row-list (utils:list:rep xcors n) let xj matrix:from-column-list (utils:list:rep xcors n) let yi matrix:from-row-list (utils:list:rep ycors n) let yj matrix:from-column-list (utils:list:rep ycors n)

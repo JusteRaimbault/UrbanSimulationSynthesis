@@ -50,6 +50,7 @@ globals [
   ;;
   ; gibrat model parameter - fixed at 0 in our case
   global:growth-rate
+  global:gravity-weight
 
   ;;
   ; dates
@@ -80,7 +81,7 @@ globals [
 
   ; matrice of gravity flows
   global:gravity-flows
-  global:feedback-flows
+  global:country-decay-matrix
 
   ;;
   ; shortest paths params
@@ -95,6 +96,8 @@ globals [
   global:slime-mould-link-deletion-proportion
 
   global:physical-network-reinforcment-threshold
+
+  global:pair-paths-hidden?
 
   ; network measures
   global:shortest-paths
@@ -134,6 +137,8 @@ cities-own [
   ; name
   turtle:name
   city:name
+
+  city:country
 
   ; current population
   city:population
@@ -179,19 +184,24 @@ paths-own [
   path:length
   path:bw-centrality
   path:flow
-  path:feedback-flow
 
 
 ]
+
+undirected-link-breed [pair-paths pair-path]
+
+pair-paths-own [
+   pair-path:flow
+]
 @#$#@#$#@
 GRAPHICS-WINDOW
-346
+323
 19
-957
-631
+933
+330
 -1
 -1
-3.0
+2.0
 1
 10
 1
@@ -201,10 +211,10 @@ GRAPHICS-WINDOW
 0
 0
 1
--100
-100
--100
-100
+-150
+150
+-75
+75
 0
 0
 1
@@ -212,10 +222,10 @@ ticks
 30.0
 
 BUTTON
-18
-189
-77
-222
+14
+43
+73
+76
 setup
 setup:setup
 NIL
@@ -228,33 +238,11 @@ NIL
 NIL
 1
 
-OUTPUT
-974
-489
-1371
-659
-10
-
 SLIDER
-15
-267
-204
-300
-global:gravity-weight
-global:gravity-weight
-0
-2e-2
-0.004706
-1e-6
-1
-NIL
-HORIZONTAL
-
-SLIDER
-16
-302
-209
-335
+19
+95
+212
+128
 global:gravity-gamma
 global:gravity-gamma
 0.5
@@ -266,25 +254,25 @@ NIL
 HORIZONTAL
 
 SLIDER
-16
-339
-208
-372
+19
+132
+211
+165
 global:gravity-decay
 global:gravity-decay
 1
 500
-248.4
+48.9
 0.1
 1
 NIL
 HORIZONTAL
 
 BUTTON
-78
-189
-144
-222
+74
+43
+140
+76
 reset
 setup:reset
 NIL
@@ -298,10 +286,10 @@ NIL
 1
 
 BUTTON
-216
-188
-310
-221
+212
+42
+306
+75
 go full period
 go-full-period
 NIL
@@ -314,91 +302,11 @@ NIL
 NIL
 1
 
-MONITOR
-126
-428
-183
-473
-date
-current-date
-17
-1
-11
-
 BUTTON
-972
-373
-1083
-406
-random path
-ask one-of nodes [let p nw:weighted-path-to one-of other nodes \"impedance\" if p != false [foreach p [? -> ask ? [set hidden? false set color red]]]]
-NIL
-1
-T
-OBSERVER
-NIL
-NIL
-NIL
-NIL
-1
-
-BUTTON
-1084
-373
-1147
-406
-clear
-ask paths [set hidden? true]
-NIL
-1
-T
-OBSERVER
-NIL
-NIL
-NIL
-NIL
-1
-
-BUTTON
-972
-409
-1083
-442
-random path cities
-test:shortest-path-random-cities
-NIL
-1
-T
-OBSERVER
-NIL
-NIL
-NIL
-NIL
-1
-
-PLOT
-1169
-19
-1434
-268
-fit
-real
-sim
-9.0
-10.0
-9.0
-10.0
-true
-false
-"" ""
-PENS
-"default" 1.0 0 -16777216 true "" ""
-
-BUTTON
-146
-188
-209
-221
+142
+42
+205
+75
 NIL
 go
 NIL
@@ -411,43 +319,11 @@ NIL
 NIL
 1
 
-INPUTBOX
-13
-489
-63
-549
-orig
-0.0
-1
-0
-Number
-
-INPUTBOX
-68
-490
-118
-550
-dest
-0.0
-1
-0
-Number
-
-CHOOSER
-8
-430
-100
-475
-global:period
-global:period
-"1831-1851" "1841-1861" "1851-1872" "1881-1901" "1891-1911" "1921-1936" "1946-1968" "1962-1982" "1975-1999" "full"
-8
-
 SLIDER
-13
-387
-172
-420
+15
+229
+174
+262
 global:final-time-step
 global:final-time-step
 0
@@ -476,41 +352,11 @@ false
 PENS
 "default" 1.0 0 -16777216 true "" ""
 
-SLIDER
-14
-24
-308
-57
-global:network-reinforcment-threshold
-global:network-reinforcment-threshold
-0
-5
-2.18761607196435
-0.1
-1
-NIL
-HORIZONTAL
-
-SLIDER
-14
-57
-323
-90
-global:network-reinforcment-exponent
-global:network-reinforcment-exponent
-0
-10
-2.0
-0.1
-1
-NIL
-HORIZONTAL
-
 PLOT
-1204
-299
-1410
-440
+1172
+20
+1378
+161
 distances
 NIL
 NIL
@@ -524,26 +370,11 @@ false
 PENS
 "pen-2" 1.0 0 -2674135 true "" "plot first matrix:min matrix:map cities:zero-infinite global:distance-matrix"
 
-SLIDER
-15
-91
-316
-124
-global:network-reinforcment-gmax
-global:network-reinforcment-gmax
-0
-0.5
-0.01
-0.01
-1
-NIL
-HORIZONTAL
-
 SWITCH
-128
-568
-349
-601
+15
+336
+236
+369
 global:show-virtual-flows?
 global:show-virtual-flows?
 0
@@ -551,29 +382,14 @@ global:show-virtual-flows?
 -1000
 
 CHOOSER
-127
-513
-292
-558
+16
+281
+181
+326
 global:link-display-var
 global:link-display-var
 "speed" "flow"
 1
-
-SLIDER
-19
-124
-336
-157
-global:network-reinforcment-quantile
-global:network-reinforcment-quantile
-0
-1
-0.9
-0.05
-1
-NIL
-HORIZONTAL
 
 PLOT
 964
@@ -594,12 +410,12 @@ PENS
 "default" 1.0 0 -16777216 true "" ""
 
 BUTTON
-972
-443
-1103
-476
-rnd path cities nodes
-test:shortest-path-random-cities-nodes
+26
+398
+160
+431
+toggle pair flows
+network:toggle-pair-flows
 NIL
 1
 T
@@ -609,6 +425,21 @@ NIL
 NIL
 NIL
 1
+
+SLIDER
+19
+170
+213
+203
+global:international-decay
+global:international-decay
+0
+1
+0.75
+0.05
+1
+NIL
+HORIZONTAL
 
 @#$#@#$#@
 ## WHAT IS IT?

@@ -51,15 +51,19 @@ to display:display-network
       ifelse mi < ma [
          ; hardcoded link width is hardcore
         let maxthickness 5.0 
-        ask links [set thickness maxthickness * ((ln (1 / path:pace)) - mi) / (ma - mi) ]
+        ask paths [set thickness maxthickness * ((ln (1 / path:pace)) - mi) / (ma - mi) ]
       ][
-        ask links [set thickness 0]
+        ask paths [set thickness 0]
       ]
     ]
     if global:link-display-var = "flow" [
-      ask links [set thickness 25 * ln (1 + path:flow)]
-      if ticks > 0 [ask links [set hidden? false] ask links with [path:flow = 0] [set hidden? true]]
+      ask paths [set thickness 25 * ln (1 + path:flow)]
+      if ticks > 0 [ask paths [set hidden? false] ask paths with [path:flow = 0] [set hidden? true]]
     ]
+  
+  let m quantile [pair-path:flow] of pair-paths 0.8
+  ask pair-paths [set hidden? global:pair-paths-hidden? set thickness ln (1 + pair-path:flow) if pair-path:flow < m [set hidden? true]] 
+  
 end
 
 
