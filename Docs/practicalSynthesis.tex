@@ -1,0 +1,127 @@
+
+\documentclass[11pt]{article}
+
+\usepackage[margin=2cm]{geometry}
+\usepackage{hyperref}
+
+\begin{document}
+
+\pagenumbering{gobble}
+
+\title{CASA 0002 - Synthesis practical\\\medskip
+A co-evolution model for system of cities integrating transportation network planning
+}
+
+\date{}
+
+\maketitle
+
+\subsection*{Context}
+
+The objective of this practical is to illustrate how the three different approaches studied in this course, namely Spatial Interaction Modeling, Spatial Complex Networks, and Agent-based Modeling, can bind together when it comes to constructing more complex urban simulation models. We will therefore study step by step a particular simulation model which uses each of these techniques.
+
+\medskip
+
+The thematic context 
+
+
+\subsection*{Model description}
+
+The model operates at the macroscopic scale: basic units are cities, distributed in space and described by their population $P_i$. A spatial interaction model is used to estimate flows between pairs of cities as
+
+\[
+\varphi_{ij} = \left( P_i P_j \right)^{\gamma} \cdot \exp\left(- \frac{d_{ij}}{d_0}\right)
+\]
+
+\medskip
+
+\textbf{Questions}
+
+\begin{enumerate}
+	\item \textit{Which type of spatial interaction model is used?} % answer: unconstrained
+	\item \textit{In the simulation model, parameters $\gamma$ and $d_0$ are fixed while they would be estimated in a statistical model}
+\end{enumerate}
+
+
+From these flows is computed a growth rate for cities, assuming that it is for one city proportional to the sum of flows to all other cities, such that
+
+\[
+\frac{P_i (t+ \Delta t) - P_i(t)}{\Delta t} \propto P_i(t)^{\gamma} \cdot \sum_j P_j(t)^{\gamma} \cdot \exp\left(- \frac{d_{ij}}{d_0}\right)
+\]
+
+This allows evolving the populations of cities at each time step.
+
+\textbf{Questions}
+
+\begin{enumerate}
+	\item \textit{This model is deterministic for population trajectories. Propose extensions with stochastic components. In particular, would a control of interaction through a fixed covariance structure between random variable be equivalent?}
+\end{enumerate}
+
+
+
+% Flow assignement: question: shortest paths / others? -> bw centralities etc.
+
+Flows between cities are then distributed into the network. We assume no congestion and that the shortest path is taken.
+
+\textbf{Questions}
+
+\begin{enumerate}
+	\item \textit{Discuss the link between link flows and a measure of network centrality.}
+	\item \textit{Discuss alternative flow assignment procedures. You can in particular have a look at the transportation literature \cite{}.}
+	\item \textit{Given this additional step, discuss the similarities between this model up to here and the canonical structure of a land-use transport model.}
+	\item (Optional - for students having an advanced knowledge of Land-use Transport Interaction models) \textit{Discuss the structure of this model, of canonical LUTI, and of a sample of more advanced LUTI models (see the classification by \cite{}% todo cite wegener 
+	) - could a much more detailed representation of underlying capture intrinsic crucial process which would be missed by our approach? In other words, what is the purpose of LUTI models? More generally, discuss the relation between the degree of validation of a model and its potential operationalization.
+	}
+\end{enumerate}
+
+
+
+% Infrastructure development
+
+The last stage in the evolution of the urban system consists in the evolution of the transport system. Given that in this model, the transport network is evolved at each time step, jointly with city properties, we deal with a co-evolution model.
+
+\bigskip
+
+\textbf{Preliminary questions}
+
+\begin{enumerate}
+	\item \textit{The concept of evolution mainly stems from biology. Discuss its relevance in an Urban System context. In particular, you can relate this question to relevant literature such as \cite{}} % Mike's paper on urabn evol?
+	\item \textit{How would you then define the concept of co-evolution in an urban context, knowing that its most popular definition in biology is ``''}%TODO strict def of coevol
+ 	% // cultural evolution // gene-meme // open problems. could co-evol just be strongly coupled dynamics? ~ deceiving.
+ 	\item \textit{From an epistemological viewpoint, discuss the possibility of transferring concepts, notions, methods, and tools, between disciplines. Discuss to what extent specific epistemological positioning are more compatible with some transfers (e.g. structural realism compatible with model and method transfer; perspectivism compatible with the construction of interdisciplinary concepts)} % ??? - speculation - investigate this first
+\end{enumerate}
+
+\bigskip
+
+The infrastructure network evolution is driven by the following processes:
+
+\begin{itemize}
+	\item The set of deciders - which are the level of respective countries - evaluate the relevance of different infrastructure development options. More precisely, they have in a simplified setting the choice between an international collaboration and a strictly national infrastructure development. Let $Z^{\ast}_i$ be the optimal infrastructure in terms of accessibility gains for the country $i$ only, and $Z^{\ast}_C$ the optimal international infrastructure.
+	\item Making the assumption that deciders aim at optimizing the accessibility gain, 
+\end{itemize}
+
+
+
+
+% indicators: network questions!
+
+
+
+\subsection*{Model exploration}
+
+
+% find counter intuitive regimes?
+
+
+
+
+
+%%%%%%%%
+
+\bibliographystyle{apalike}
+\bibliography{biblio.bib}
+
+
+	
+\end{document}
+
