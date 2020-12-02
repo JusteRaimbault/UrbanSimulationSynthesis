@@ -1,0 +1,3 @@
+[submodule "Models/CoevolGov"]
+	path = Models/CoevolGov
+	url = git@github.com:JusteRaimbault/CoevolGov.git
